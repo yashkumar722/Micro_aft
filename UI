@@ -1,0 +1,517 @@
+import { useState, useRef, useEffect } from "react";
+
+const TABS = [
+  { id: "manual", label: "Manual Entry", icon: "✍️", desc: "Add transactions directly" },
+  { id: "whatsapp", label: "WhatsApp", icon: "💬", desc: "Import from chat export" },
+  { id: "excel", label: "Excel / CSV", icon: "📊", desc: "Upload spreadsheet data" },
+  { id: "tally", label: "Tally XML", icon: "🧾", desc: "Import Tally exports" },
+  { id: "bank", label: "Bank Statement", icon: "🏦", desc: "Parse PDF statements" },
+];
+
+const CATEGORIES = ["Sales", "Purchase", "Expense", "Inventory", "Salary", "Logistics", "Other"];
+
+function useTypewriter(text, speed = 18) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    setDisplayed("");
+    if (!text) return;
+    let i = 0;
+    const t = setInterval(() => {
+      setDisplayed(text.slice(0, i + 1));
+      i++;
+      if (i >= text.length) clearInterval(t);
+    }, speed);
+    return () => clearInterval(t);
+  }, [text]);
+  return displayed;
+}
+
+function AIInsightPanel({ insight, loading }) {
+  const typed = useTypewriter(insight, 12);
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #0f1923 0%, #0a2a1a 100%)",
+      border: "1px solid #1a4a2a",
+      borderRadius: 16,
+      padding: "20px 24px",
+      marginTop: 24,
+      position: "relative",
+      overflow: "hidden",
+      minHeight: 90,
+    }}>
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: "linear-gradient(90deg, #00ff87, #00c6ff, #00ff87)",
+        backgroundSize: "200% 100%",
+        animation: loading ? "shimmer 1.2s infinite linear" : "none",
+      }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <span style={{ fontSize: 18 }}>🤖</span>
+        <span style={{ color: "#00ff87", fontFamily: "'DM Mono', monospace", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>
+          Zerot AI · Claude
+        </span>
+        {loading && <span style={{ color: "#888", fontSize: 11, marginLeft: "auto" }}>Analyzing…</span>}
+      </div>
+      <p style={{ color: "#d4f5e0", fontFamily: "'Lora', serif", fontSize: 14.5, lineHeight: 1.7, margin: 0, minHeight: 40 }}>
+        {loading ? (
+          <span style={{ color: "#555" }}>Generating insight from your data…</span>
+        ) : typed ? typed : (
+          <span style={{ color: "#444" }}>Submit data to receive an AI-powered business insight.</span>
+        )}
+        {!loading && typed && typed.length < (insight || "").length && <span style={{ opacity: 0.6 }}>▍</span>}
+      </p>
+    </div>
+  );
+}
+
+function ManualEntry({ onSubmit }) {
+  const [form, setForm] = useState({ type: "Sales", amount: "", description: "", date: new Date().toISOString().split("T")[0], party: "" });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  return (
+    <div>
+      <p style={{ color: "#888", fontFamily: "'Lora', serif", fontSize: 13.5, marginBottom: 20 }}>
+        Add a transaction entry directly. Fill in the fields below and Zerot AI will provide an instant insight.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Category</label>
+          <select value={form.type} onChange={e => set("type", e.target.value)} style={inputStyle}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Amount (₹)</label>
+          <input type="number" placeholder="0.00" value={form.amount} onChange={e => set("amount", e.target.value)} style={inputStyle} />
+        </div>
+        <div style={{ ...fieldWrap, gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Description</label>
+          <input type="text" placeholder="e.g. Supplier payment for raw material" value={form.description} onChange={e => set("description", e.target.value)} style={inputStyle} />
+        </div>
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Party / Vendor</label>
+          <input type="text" placeholder="e.g. Ravi Suppliers" value={form.party} onChange={e => set("party", e.target.value)} style={inputStyle} />
+        </div>
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Date</label>
+          <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <button onClick={() => onSubmit(form)} style={submitBtn}>
+        Add Entry & Get Insight →
+      </button>
+    </div>
+  );
+}
+
+function WhatsAppImport({ onSubmit }) {
+  const [text, setText] = useState("");
+  return (
+    <div>
+      <p style={{ color: "#888", fontFamily: "'Lora', serif", fontSize: 13.5, marginBottom: 16 }}>
+        Paste your WhatsApp chat export below. Zerot will parse business transactions mentioned in the conversation.
+      </p>
+      <div style={{ background: "#0a1a10", border: "1px solid #1a3a20", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 16 }}>💬</span>
+          <span style={{ color: "#00ff87", fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: 1 }}>WHATSAPP CHAT PARSER</span>
+        </div>
+        <textarea
+          rows={8}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder={`Paste exported chat here…\n\nExample:\n[12/04/25, 10:32] Ravi: Paid ₹4500 for 50kg raw material\n[12/04/25, 11:15] You: Sold 20 units to Suresh for ₹9000\n[12/04/25, 14:00] Ravi: Transport charges ₹800 paid`}
+          style={{ ...inputStyle, width: "100%", resize: "vertical", fontFamily: "'DM Mono', monospace", fontSize: 12.5, boxSizing: "border-box" }}
+        />
+      </div>
+      <button onClick={() => onSubmit({ source: "whatsapp", raw: text })} style={submitBtn}>
+        Parse Chat & Extract Transactions →
+      </button>
+    </div>
+  );
+}
+
+function FileUpload({ type, onSubmit }) {
+  const [file, setFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const ref = useRef();
+  const isExcel = type === "excel";
+  const accept = isExcel ? ".csv,.xlsx,.xls" : ".xml";
+  const label = isExcel ? "CSV / Excel File" : "Tally XML Export";
+  const exampleText = isExcel
+    ? "Drag & drop your Excel or CSV file here"
+    : "Drag & drop your Tally XML export here";
+
+  return (
+    <div>
+      <p style={{ color: "#888", fontFamily: "'Lora', serif", fontSize: 13.5, marginBottom: 16 }}>
+        {isExcel
+          ? "Upload your spreadsheet data. Zerot will map columns and extract transactions automatically."
+          : "Export data from Tally as XML and upload it here. Zerot will parse ledger entries and transactions."}
+      </p>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }}
+        onClick={() => ref.current.click()}
+        style={{
+          border: `2px dashed ${dragging ? "#00ff87" : file ? "#00c6ff" : "#1f3a28"}`,
+          borderRadius: 14,
+          padding: "36px 24px",
+          textAlign: "center",
+          cursor: "pointer",
+          background: dragging ? "#0a2a18" : file ? "#081820" : "#070f0a",
+          transition: "all 0.2s",
+          marginBottom: 16,
+        }}
+      >
+        <input ref={ref} type="file" accept={accept} style={{ display: "none" }} onChange={e => setFile(e.target.files[0])} />
+        {file ? (
+          <div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>{isExcel ? "📊" : "🧾"}</div>
+            <div style={{ color: "#00c6ff", fontFamily: "'DM Mono', monospace", fontSize: 13 }}>{file.name}</div>
+            <div style={{ color: "#555", fontSize: 12, marginTop: 4 }}>{(file.size / 1024).toFixed(1)} KB · Click to change</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.6 }}>{isExcel ? "📊" : "🧾"}</div>
+            <div style={{ color: "#ccc", fontSize: 14 }}>{exampleText}</div>
+            <div style={{ color: "#555", fontSize: 12, marginTop: 6 }}>or click to browse · {accept}</div>
+          </div>
+        )}
+      </div>
+      {isExcel && (
+        <div style={{ background: "#0a1510", border: "1px solid #1a3020", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+          <p style={{ color: "#666", fontSize: 12, fontFamily: "'DM Mono', monospace", margin: 0 }}>
+            Expected columns: <span style={{ color: "#00ff87" }}>Date · Category · Amount · Description · Party</span>
+          </p>
+        </div>
+      )}
+      <button onClick={() => file && onSubmit({ source: type, file: file.name, size: file.size })} style={{ ...submitBtn, opacity: file ? 1 : 0.4 }}>
+        Upload & Analyze →
+      </button>
+    </div>
+  );
+}
+
+function BankStatement({ onSubmit }) {
+  const [file, setFile] = useState(null);
+  const [bank, setBank] = useState("SBI");
+  const [dragging, setDragging] = useState(false);
+  const ref = useRef();
+  const banks = ["SBI", "HDFC", "ICICI", "Axis", "Kotak", "PNB", "Other"];
+
+  return (
+    <div>
+      <p style={{ color: "#888", fontFamily: "'Lora', serif", fontSize: 13.5, marginBottom: 16 }}>
+        Upload your bank statement PDF. Zerot AI will extract and categorize all transactions automatically.
+      </p>
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Bank</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          {banks.map(b => (
+            <button key={b} onClick={() => setBank(b)} style={{
+              padding: "6px 14px",
+              borderRadius: 20,
+              border: `1px solid ${bank === b ? "#00ff87" : "#1f3a28"}`,
+              background: bank === b ? "#0a3a1a" : "transparent",
+              color: bank === b ? "#00ff87" : "#666",
+              fontSize: 12,
+              fontFamily: "'DM Mono', monospace",
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}>{b}</button>
+          ))}
+        </div>
+      </div>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }}
+        onClick={() => ref.current.click()}
+        style={{
+          border: `2px dashed ${dragging ? "#00ff87" : file ? "#00c6ff" : "#1f3a28"}`,
+          borderRadius: 14,
+          padding: "36px 24px",
+          textAlign: "center",
+          cursor: "pointer",
+          background: dragging ? "#0a2a18" : file ? "#081820" : "#070f0a",
+          transition: "all 0.2s",
+          marginBottom: 16,
+        }}
+      >
+        <input ref={ref} type="file" accept=".pdf" style={{ display: "none" }} onChange={e => setFile(e.target.files[0])} />
+        {file ? (
+          <div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🏦</div>
+            <div style={{ color: "#00c6ff", fontFamily: "'DM Mono', monospace", fontSize: 13 }}>{file.name}</div>
+            <div style={{ color: "#555", fontSize: 12, marginTop: 4 }}>{(file.size / 1024).toFixed(1)} KB</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.6 }}>🏦</div>
+            <div style={{ color: "#ccc", fontSize: 14 }}>Drop your bank statement PDF here</div>
+            <div style={{ color: "#555", fontSize: 12, marginTop: 6 }}>or click to browse · .pdf</div>
+          </div>
+        )}
+      </div>
+      <button onClick={() => file && onSubmit({ source: "bank", bank, file: file.name })} style={{ ...submitBtn, opacity: file ? 1 : 0.4 }}>
+        Parse Statement & Categorize →
+      </button>
+    </div>
+  );
+}
+
+function RecentEntries({ entries }) {
+  if (!entries.length) return null;
+  return (
+    <div style={{ marginTop: 28 }}>
+      <div style={{ color: "#444", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: 2, marginBottom: 12 }}>RECENT INGESTIONS</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {entries.slice(-5).reverse().map((e, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 12,
+            background: "#090f0b", border: "1px solid #141f18", borderRadius: 10,
+            padding: "10px 14px",
+          }}>
+            <span style={{ fontSize: 18 }}>{TABS.find(t => t.id === e.source)?.icon || "📥"}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "#ccc", fontSize: 13, fontFamily: "'Lora', serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {e.description || e.file || e.source}
+              </div>
+              <div style={{ color: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>
+                {e.type && <span style={{ color: "#00ff87", marginRight: 8 }}>{e.type}</span>}
+                {e.amount && <span>₹{Number(e.amount).toLocaleString("en-IN")}</span>}
+                {e.bank && <span>{e.bank} Bank</span>}
+                {!e.amount && !e.bank && <span>{e.source.toUpperCase()}</span>}
+              </div>
+            </div>
+            <div style={{ color: "#333", fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{e.date || "today"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function callClaude(data) {
+  const prompts = {
+    manual: `You are Zerot AI, a smart financial assistant for Indian MSMEs. A business owner just recorded: Category: ${data.type}, Amount: ₹${data.amount}, Description: "${data.description}", Party: "${data.party}", Date: ${data.date}. In 2-3 sentences, give a specific, actionable insight about this transaction — mention cash flow, seasonality, or cost patterns if relevant. Be direct and practical, like a trusted CA.`,
+    whatsapp: `You are Zerot AI. A business owner shared this WhatsApp chat export: "${data.raw?.slice(0, 800)}". Extract 2-3 key business transactions mentioned and summarize the financial activity in 2-3 sentences. Mention any notable amounts, parties, or patterns you spotted.`,
+    excel: `You are Zerot AI. A business uploaded an Excel/CSV file named "${data.file}" (${(data.size / 1024).toFixed(1)} KB). In 2-3 sentences, tell them what to expect from the data import process, what columns Zerot will auto-map, and what insights they'll get after processing.`,
+    tally: `You are Zerot AI. A business uploaded a Tally XML export named "${data.file}". In 2-3 sentences, describe how Zerot will process this — ledger entries, voucher types, and what financial insights will be generated from the Tally data.`,
+    bank: `You are Zerot AI. A business uploaded a ${data.bank} bank statement PDF. In 2-3 sentences, explain how Zerot's AI will parse and auto-categorize the transactions, what patterns it might find, and what cash flow insight the owner can expect.`,
+  };
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompts[data.source] || prompts.manual }],
+    }),
+  });
+  const json = await response.json();
+  return json.content?.[0]?.text || "Insight unavailable.";
+}
+
+const fieldWrap = { display: "flex", flexDirection: "column", gap: 6 };
+const labelStyle = { color: "#556b5a", fontFamily: "'DM Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase" };
+const inputStyle = {
+  background: "#080f0a", border: "1px solid #1a3020", borderRadius: 8,
+  color: "#d4f5e0", fontFamily: "'Lora', serif", fontSize: 14,
+  padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box",
+};
+const submitBtn = {
+  marginTop: 20,
+  background: "linear-gradient(135deg, #00ff87, #00c6a0)",
+  border: "none", borderRadius: 10, color: "#030a05",
+  fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700,
+  letterSpacing: 0.5, padding: "13px 24px",
+  cursor: "pointer", width: "100%", transition: "opacity 0.2s",
+};
+
+export default function ZerotIngestion() {
+  const [activeTab, setActiveTab] = useState("manual");
+  const [insight, setInsight] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState([]);
+  const [toast, setToast] = useState("");
+
+  const handleSubmit = async (data) => {
+    const enriched = { ...data, source: data.source || activeTab };
+    setEntries(prev => [...prev, enriched]);
+    setLoading(true);
+    setInsight("");
+    setToast("Data received · Analyzing…");
+    setTimeout(() => setToast(""), 2500);
+    try {
+      const result = await callClaude(enriched);
+      setInsight(result);
+    } catch {
+      setInsight("Could not reach Claude API. Check your network connection.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#050c07",
+      fontFamily: "'Lora', serif",
+      padding: "0 0 60px",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap');
+        * { box-sizing: border-box; }
+        input::placeholder, textarea::placeholder { color: #2a4a32; }
+        select option { background: #0a1a0e; }
+        @keyframes shimmer { 0%{background-position:0% 0} 100%{background-position:200% 0} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #050c07; }
+        ::-webkit-scrollbar-thumb { background: #1a3020; border-radius: 2px; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{
+        borderBottom: "1px solid #0f1f14",
+        padding: "20px 32px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: "linear-gradient(180deg, #070e08 0%, transparent 100%)",
+        position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "linear-gradient(135deg, #00ff87, #00c6a0)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 18,
+          }}>⚡</div>
+          <div>
+            <div style={{ color: "#e8f5ec", fontFamily: "'DM Mono', monospace", fontSize: 16, fontWeight: 500, letterSpacing: -0.5 }}>
+              ZEROT
+            </div>
+            <div style={{ color: "#3a6a4a", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: 2 }}>
+              DATA INGESTION
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: "#00ff87", fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 500 }}>
+              {entries.length}
+            </div>
+            <div style={{ color: "#3a6a4a", fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: 2 }}>
+              ENTRIES TODAY
+            </div>
+          </div>
+          <div style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: "#00ff87",
+            boxShadow: "0 0 10px #00ff87",
+            animation: "pulse 2s infinite",
+          }} />
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "32px 20px 0" }}>
+
+        {/* Hero */}
+        <div style={{ marginBottom: 32, animation: "fadeUp 0.5s ease both" }}>
+          <h1 style={{
+            color: "#e8f5ec", fontSize: 28, fontFamily: "'Lora', serif",
+            fontWeight: 400, margin: "0 0 8px", lineHeight: 1.3,
+          }}>
+            Bring your business data <em style={{ color: "#00ff87" }}>together.</em>
+          </h1>
+          <p style={{ color: "#4a7a5a", fontSize: 14, margin: 0, fontFamily: "'Lora', serif" }}>
+            WhatsApp, Excel, Tally, bank statements — one place, instant AI insights.
+          </p>
+        </div>
+
+        {/* Source Tabs */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 28,
+          animation: "fadeUp 0.5s 0.1s ease both", opacity: 0, animationFillMode: "forwards",
+        }}>
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setInsight(""); }} style={{
+              background: activeTab === tab.id ? "#0a2a18" : "#070f0a",
+              border: `1px solid ${activeTab === tab.id ? "#00ff87" : "#0f2015"}`,
+              borderRadius: 12, padding: "12px 8px", cursor: "pointer",
+              transition: "all 0.2s", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>{tab.icon}</div>
+              <div style={{ color: activeTab === tab.id ? "#00ff87" : "#4a6a54", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: 0.5 }}>
+                {tab.label}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Main Panel */}
+        <div style={{
+          background: "#070f0a",
+          border: "1px solid #0f2015",
+          borderRadius: 18, padding: "28px 28px 24px",
+          animation: "fadeUp 0.4s 0.15s ease both", opacity: 0, animationFillMode: "forwards",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
+            <span style={{ fontSize: 22 }}>{TABS.find(t => t.id === activeTab)?.icon}</span>
+            <div>
+              <div style={{ color: "#d4f5e0", fontFamily: "'DM Mono', monospace", fontSize: 13 }}>
+                {TABS.find(t => t.id === activeTab)?.label}
+              </div>
+              <div style={{ color: "#3a5a42", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: 1 }}>
+                {TABS.find(t => t.id === activeTab)?.desc}
+              </div>
+            </div>
+          </div>
+
+          {activeTab === "manual" && <ManualEntry onSubmit={d => handleSubmit({ ...d, source: "manual" })} />}
+          {activeTab === "whatsapp" && <WhatsAppImport onSubmit={handleSubmit} />}
+          {activeTab === "excel" && <FileUpload type="excel" onSubmit={handleSubmit} />}
+          {activeTab === "tally" && <FileUpload type="tally" onSubmit={handleSubmit} />}
+          {activeTab === "bank" && <BankStatement onSubmit={handleSubmit} />}
+
+          <AIInsightPanel insight={insight} loading={loading} />
+        </div>
+
+        <RecentEntries entries={entries} />
+
+        {/* Architecture Badge */}
+        <div style={{
+          marginTop: 36, padding: "16px 20px",
+          background: "#050c07", border: "1px solid #0c1a10",
+          borderRadius: 12, display: "flex", gap: 20, flexWrap: "wrap",
+          animation: "fadeUp 0.4s 0.3s ease both", opacity: 0, animationFillMode: "forwards",
+        }}>
+          {["Ingestion Layer", "FastAPI Backend", "SQLite → PostgreSQL", "Claude AI", "React Dashboard"].map((item, i) => (
+            <div key={item} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? "#00ff87" : "#1a3a22" }} />
+              <span style={{ color: i === 0 ? "#00ff87" : "#2a4a32", fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: 1 }}>
+                {item}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#0a2a18", border: "1px solid #00ff87",
+          borderRadius: 20, padding: "10px 20px",
+          color: "#00ff87", fontFamily: "'DM Mono', monospace", fontSize: 12,
+          animation: "fadeUp 0.3s ease", zIndex: 999,
+          boxShadow: "0 0 30px rgba(0,255,135,0.15)",
+        }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
